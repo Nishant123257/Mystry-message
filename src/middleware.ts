@@ -1,23 +1,35 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-export { default } from "next-auth/middleware";
 import { getToken } from "next-auth/jwt";
 
-// This function can be marked `async` if using `await` inside
 export async function middleware(request: NextRequest) {
-  return NextResponse.redirect(new URL("/home", request.url));
   const token = await getToken({ req: request });
-  const url = request.nextUrl;
+  const { pathname } = request.nextUrl;
 
-  if (
-    token &&
-    (url.pathname.startsWith("/sign-in") ||
-      url.pathname.startsWith("/sign-up") ||
-      url.pathname.startsWith("/") ||
-      url.pathname.startsWith("/verify"))
-  ) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  // Normalize deprecated/unused path
+  if (pathname === "/home") {
+    return NextResponse.redirect(new URL("/", request.url));
   }
+
+  // If authenticated, prevent access to auth-only public routes
+  if (token) {
+    if (
+      pathname.startsWith("/sign-in") ||
+      pathname.startsWith("/sign-up") ||
+      pathname.startsWith("/verify")
+    ) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // If not authenticated, protect dashboard routes
+  if (pathname.startsWith("/dashboard")) {
+    return NextResponse.redirect(new URL("/sign-in", request.url));
+  }
+
+  // Allow all other requests, including root `/`
+  return NextResponse.next();
 }
 
 // See "Matching Paths" below to learn more
