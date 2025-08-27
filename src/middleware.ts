@@ -6,6 +6,11 @@ export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request });
   const { pathname } = request.nextUrl;
 
+  // Normalize deprecated/unused path
+  if (pathname === "/home") {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
   // If authenticated, prevent access to auth-only public routes
   if (token) {
     if (
